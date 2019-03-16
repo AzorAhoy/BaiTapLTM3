@@ -1,0 +1,19 @@
+ Volume in drive D has no label.
+ Volume Serial Number is 7CF6-DB90
+
+ Directory of D:\BaiTapLTM3\TelnetServer
+
+03/16/2019  12:36 AM    <DIR>          .
+03/16/2019  12:36 AM    <DIR>          ..
+03/16/2019  12:34 AM                14 BaiTapLTM3out.txt
+03/16/2019  12:35 AM    <DIR>          Debug
+03/16/2019  12:39 AM                 0 out.txt
+03/15/2019  03:53 PM               214 pch.cpp
+03/15/2019  03:53 PM               630 pch.h
+03/16/2019  12:36 AM             3,289 TelnetServer.cpp
+03/15/2019  04:17 PM             8,531 TelnetServer.vcxproj
+03/15/2019  03:53 PM             1,177 TelnetServer.vcxproj.filters
+03/15/2019  03:53 PM               165 TelnetServer.vcxproj.user
+03/15/2019  04:27 PM                33 users.txt
+               9 File(s)         14,053 bytes
+               3 Dir(s)  60,269,465,600 bytes free
