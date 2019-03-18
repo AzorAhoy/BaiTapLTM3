@@ -5,25 +5,8 @@
 #include <iostream>
 #include "winsock2.h"
 
-
-char * ids[64];
-
 int main()
 {
-
-	char buf[256];
-	char sendBuf[256];
-	int ret;
-	
-
-	char cmd[64];
-	
-	char tmp[64];
-
-	char targetID[64];
-	char okMsg[] = "Correct syntax. Type your message\n";
-	char errorMsg[] = "Syntax Error. Please try again.\n";
-
 	WSADATA wsa;
 	WSAStartup(MAKEWORD(2, 2), &wsa);
 
@@ -38,124 +21,124 @@ int main()
 	listen(listener, 5);
 
 	fd_set fdread;
-	//int ret;
 
 	SOCKET clients[64];
 	int numClients = 0;
 
-	//char buf[256];
+	SOCKET registeredClients[64];
+	int registered = 0;
+	char * ids[64];
 
-	while (true)
+	int ret;
+
+	char buf[256];
+
+	char id[64];
+	char cmd[64];
+	char tmp[64];
+
+	char errorMsg[] = "Syntax Error. Please try again.\n";
+
+	char sendBuf[256];
+	char targetID[64];
+	//char okMsg[] = "Correct syntax. Type your message\n";
+	while (1)
 	{
-		char id[64];
 		FD_ZERO(&fdread);
-		FD_SET(listener, &fdread);
-		for (int i = 0; i < numClients; i++)
-			FD_SET(clients[i], &fdread);
 
+		//Gan cac socket vao tap fdread
+		FD_SET(listener, &fdread);
+		for (int i = 0; i < numClients; i++) {
+			FD_SET(clients[i], &fdread);
+		}
+		//Tham do cac su kien bang lenh select
 		ret = select(0, &fdread, NULL, NULL, NULL);
 
-		if (ret == SOCKET_ERROR)
+		if (ret == SOCKET_ERROR) {
 			break;
-
-		if (ret > 0)
+		}
+		if (FD_ISSET(listener, &fdread))
 		{
-			// Xu ly su kien co ket noi moi
-			if (FD_ISSET(listener, &fdread))
-			{
-				SOCKET client = accept(listener, NULL, NULL);
-				printf("New client accepted: %d\n", client);
-				while (true)
-				{
-					ret = recv(client, buf, sizeof(buf), 0);
+			SOCKET client = accept(listener, NULL, NULL);
+			printf("New client accepted: %d\n", client);
 
-					buf[ret] = 0;
-					printf("Received from %d: %s\n", client, buf);
+			clients[numClients] = client;
+			numClients++;
+		}
+
+		for (int i = 0; i < numClients; i++) {
+			if (FD_ISSET(clients[i], &fdread))
+			{
+				ret = recv(clients[i], buf, sizeof(buf), 0);
+				if (ret <= 0)
+					continue;
+
+				buf[ret] = 0;
+				printf("Received from %d: %s\n", clients[i], buf);
+
+				// Kiem tra trang thai cua client
+				// Va xu ly du lieu theo trang thai tuong ung
+
+				int j = 0;
+				for (; j < registered; j++) {
+					if (clients[i] == registeredClients[j])
+						break;
+				}
+				if (j == registered)
+				{
+					// Trang thai chua dang nhap
+					// Kiem tra cu phap client_id: [id]
 					ret = sscanf(buf, "%s %s %s", cmd, id, tmp);
 					if (ret == 2)
 					{
 						if (strcmp(cmd, "client_id:") == 0)
 						{
+							char okMsg[] = "Dung cu phap. Hay nhap thong diep muon gui.\n";
+							send(clients[i], okMsg, strlen(okMsg), 0);
 
-							send(client, okMsg, strlen(okMsg), 0);
-							clients[numClients] = client;
-							ids[numClients] = id;
-							numClients++;
-							for (int i = 0; i < numClients; i++)
-							{
-								printf("%s\n", ids[i]);
-							}
-							break;
+							// Luu client dang nhap thanh cong vao mang
+							registeredClients[registered] = clients[i];
+							ids[registered] = (char *)malloc(strlen(id) + 1);
+							memcpy(ids[registered], id, strlen(id) + 1);
+							++registered;
+						}
+						else
+							send(clients[i], errorMsg, strlen(errorMsg), 0);
+					}
+					else
+						send(clients[i], errorMsg, strlen(errorMsg), 0);
+				}
+				else
+				{
+					// Trang thai da dang nhap
+					ret = sscanf(buf, "%s", targetID);
+					if (ret == 1)
+					{
+						if (strcmp(targetID, "all") == 0)
+						{
+							sprintf(sendBuf, "%s: %s", ids[j], buf + strlen(targetID) + 1);
+
+							for (int j = 0; j < registered; j++)
+								if (registeredClients[j] != clients[i])
+									send(registeredClients[j], sendBuf, strlen(sendBuf), 0);
 						}
 						else
 						{
-							send(client, errorMsg, strlen(errorMsg), 0);
+							sprintf(sendBuf, "%s: %s", ids[j], buf + strlen(targetID) + 1);
+
+							for (int j = 0; j < registered; j++)
+								if (strcmp(ids[j], targetID) == 0)
+									send(registeredClients[j], sendBuf, strlen(sendBuf), 0);
 						}
 					}
-					else
-					{
-						send(client, errorMsg, strlen(errorMsg), 0);
-					}
 				}
-	
+
 			}
-
-			// Xu ly su kien khi co du lieu den cac client
-			for (int i = 0; i < numClients; i++)
-				if (FD_ISSET(clients[i], &fdread))
-				{
-					ret = recv(clients[i], buf, sizeof(buf), 0);
-
-					if (ret <= 0)
-					{
-						// Ket noi bi huy
-						continue;
-					}
-
-					buf[ret] = 0;
-					printf("Received from %d: %s\n", clients[i], buf);
-					ret = sscanf(buf, "%s", targetID);
-					sprintf(sendBuf, "%s: %s", id, buf);
-					for (int j = 0; j < numClients; j++)
-					{
-						if (clients[i] != clients[j])
-						{
-							send(clients[j], sendBuf, strlen(sendBuf), 0);
-						}
-						printf("Received from %d: %s\n", clients[i], buf);
-					}
-					//if (ret == 1)
-					//{
-					//	if (strcmp(targetID, "all") == 0)
-					//	{
-					//		sprintf(sendBuf, "%s %s", id, buf + strlen(targetID) + 1);
-					//		for (int j = 0; j < numClients; j++)
-					//		{
-					//			//printf("%d", clients[j]);
-					//			send(clients[j], sendBuf, strlen(sendBuf), 0);
-					//		}
-					//	}
-					//	else
-					//	{
-					//		//printf("This");
-					//		sprintf(sendBuf, "%s %s", id, buf + strlen(targetID) + 1);
-					//		for (int k = 0; k < numClients; k++)
-					//		{
-					//			//printf("%d", clients[k]);
-					//			if (strcmp(ids[k], targetID) == 0)
-					//			{
-					//				//printf("%d", clients[k]);
-					//				send(clients[k], sendBuf, strlen(sendBuf), 0);
-					//				printf("%d", clients[k]);
-					//			}
-					//		}
-					//	}
-					//}
-
-				}
 		}
 	}
-
+	
+	closesocket(listener);
+    WSACleanup();
 	return 0;
 }
 
